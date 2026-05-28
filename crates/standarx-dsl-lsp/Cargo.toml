@@ -1,0 +1,23 @@
+[package]
+name = "standarx-dsl-lsp"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Universal Language Server Protocol backend for the standarx DSL — parses .sxb/.sxd/* documents and publishes syntactic diagnostics. Downstream schemas plug on top."
+keywords = ["lsp", "dsl", "language-server", "standarx", "editor"]
+categories = ["development-tools", "text-editors"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "standarx-lsp"
+path = "src/bin/standarx_lsp.rs"
+
+[dependencies]
+standarx-dsl.workspace = true
+tower-lsp = "0.20"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util"] }
