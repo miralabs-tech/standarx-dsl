@@ -126,16 +126,6 @@ the per-crate READMEs for VSCode / neovim recipes:
   parser; corpus tests in `tree-sitter-standarx/test/corpus/`
   pin the parse-tree shape and act as the regression net.
 
-## Releasing
-
-Push an annotated tag (`vX.Y.Z`) and the
-[`Release`](.github/workflows/release.yml) workflow handles the
-rest: GitHub Release with auto-generated notes, prebuilt
-`standarx-lsp` / `standarx-grammar-gen` binaries for Linux / macOS
-(x86_64 + aarch64) / Windows, editor grammar JSON files attached
-separately, and (opt-in) crates.io publish in dependency order.
-The full flow + sanity-check cheat sheet lives in
-[RELEASING.md](RELEASING.md).
 
 ## Origin
 
