@@ -75,7 +75,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: "fuzz -> target"
-      - run: cargo install cargo-fuzz --locked
+      # `--locked` would pin cargo-fuzz's own bundled Cargo.lock,
+      # which currently points at rustix 0.36.5 — and that version
+      # uses internal `rustc_*` attributes that were removed from
+      # recent nightly toolchains, breaking the install. Letting
+      # cargo resolve transitive deps freely picks a current rustix
+      # that compiles cleanly.
+      - run: cargo install cargo-fuzz
       - run: cargo fuzz build
         working-directory: fuzz
 
