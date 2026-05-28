@@ -1,0 +1,18 @@
+[package]
+name = "standarx-dsl"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Reusable DSL parser for the standar* ecosystem (lexer + parser + AST). Used by standarbuild for .sxb (tasks) and standardoc for .sxd (workspace config)."
+keywords = ["dsl", "parser", "lexer", "config", "standarx"]
+categories = ["parser-implementations", "config"]
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
