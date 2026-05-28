@@ -66,6 +66,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo doc --no-deps --workspace
 
+  fuzz-build:
+    name: fuzz target compile check (nightly)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "fuzz -> target"
+      - run: cargo install cargo-fuzz --locked
+      - run: cargo fuzz build
+        working-directory: fuzz
+
   msrv:
     name: build (MSRV 1.95)
     runs-on: ubuntu-latest

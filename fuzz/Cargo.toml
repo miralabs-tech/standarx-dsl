@@ -1,0 +1,25 @@
+[package]
+name = "standarx-dsl-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+standarx-dsl = { path = "../crates/standarx-dsl" }
+
+# Prevent this from being added to the parent workspace.
+[workspace]
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
+test = false
+doc = false
+bench = false
+
+# parse_with_recovery target is added in phase 2 (see fuzz_targets/
+# parse_with_recovery.rs).
