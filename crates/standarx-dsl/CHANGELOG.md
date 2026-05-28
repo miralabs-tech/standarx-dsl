@@ -12,6 +12,17 @@ and `parser` modules remain `pub` for advanced consumers (formatters,
 linters, alternative drivers) but are `#[doc(hidden)]` and not part
 of the semver contract.
 
+**Future-proofing policy.** All public enums in `ast` (`Stmt`, `Expr`,
+`InterpExpr`, `StringPart`, `TriviaKind`) and `diag` (`Severity`,
+`DiagKind`), plus the `Diag` struct and the AST structs that carry
+optional metadata (`File`, `StmtNode`, `Trivia`, `Assign`, `Block`,
+`Ref`, `MapEntry`, `StringLit`), are marked `#[non_exhaustive]`.
+New variants and new fields can land in 1.x minors without breaking
+downstreams that have `_ =>` arms / non-literal construction. Two
+escape hatches stay open by design: `Ident(pub String)` (consumers
+build idents in tests) and `Spanned<T>` (generic wrapper, shape can't
+grow without changing the generic itself).
+
 ### Added
 
 - `impl std::fmt::Display for Diag` — `format!("{diag}")` now reads
@@ -22,6 +33,9 @@ of the semver contract.
 - `#[must_use]` on `parse()` with a custom message explaining that
   ignoring the result discards parse errors.
 - `#[must_use]` on `Diag::is_error()`.
+- `#[non_exhaustive]` on 7 public enums and 9 public structs (see
+  "Future-proofing policy" above) so 1.x minors can grow variants
+  and fields additively.
 - `StringLit::try_into_bare_text(span, context)` — decodes a string
   literal as a single-line, non-interpolated bare-name payload.
   Used at three sites (lexer ref-segment, parser ref-segment, parser

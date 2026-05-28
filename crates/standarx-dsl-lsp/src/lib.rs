@@ -160,6 +160,11 @@ pub fn diag_to_lsp(src: &str, diag: &Diag) -> Diagnostic {
         severity: Some(match diag.severity {
             Severity::Error => DiagnosticSeverity::ERROR,
             Severity::Warning => DiagnosticSeverity::WARNING,
+            // `standarx_dsl::Severity` is #[non_exhaustive]; future
+            // additions (e.g. Info, Note) land here as the closest
+            // LSP equivalent. Bump this arm when standarx-dsl grows
+            // a variant we want to surface distinctly.
+            _ => DiagnosticSeverity::INFORMATION,
         }),
         source: Some(DIAGNOSTIC_SOURCE.into()),
         message: diag.kind.to_string(),

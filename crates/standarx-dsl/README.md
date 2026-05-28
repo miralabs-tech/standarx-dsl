@@ -80,6 +80,18 @@ advanced consumers (formatters, alternative drivers) but are
 `#[doc(hidden)]` and not part of the semver contract — they may
 change between minor versions.
 
+**Future-proofing.** All public enums and metadata-carrying structs
+are `#[non_exhaustive]`. This means downstreams must:
+
+- include `_ =>` arms in matches against `Stmt`, `Expr`, `InterpExpr`,
+  `StringPart`, `TriviaKind`, `Severity`, `DiagKind`;
+- construct `Diag` via `Diag::parse` / `Diag::schema` / `Diag::schema_warn`
+  instead of struct literals.
+
+In exchange, new variants and fields can land in 1.x minors without a
+forced 2.0. `Ident(pub String)` and `Spanned<T>` stay open for
+ergonomic construction.
+
 ## Ecosystem
 
 | Crate | Purpose |

@@ -2,12 +2,14 @@ use crate::diag::{Diag, Span, Spanned};
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct File {
     pub stmts: Vec<StmtNode>,
     pub trailing_trivia: Vec<Trivia>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct StmtNode {
     pub leading: Vec<Trivia>,
     pub trailing: Option<Trivia>,
@@ -17,6 +19,7 @@ pub struct StmtNode {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "kind", content = "text", rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum TriviaKind {
     LineComment(String),
     BlockComment(String),
@@ -24,24 +27,28 @@ pub enum TriviaKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct Trivia {
     pub kind: TriviaKind,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub enum Stmt {
     Assign(Assign),
     Block(Block),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct Assign {
     pub key: Spanned<Ident>,
     pub value: Spanned<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct Block {
     pub kind: Spanned<Ident>,
     pub label: Option<Spanned<String>>,
@@ -60,6 +67,7 @@ impl Ident {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub enum Expr {
     Int(i64),
     Float(f64),
@@ -72,17 +80,20 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct Ref {
     pub path: Vec<Spanned<Ident>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct MapEntry {
     pub key: Spanned<Ident>,
     pub value: Spanned<Expr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub struct StringLit {
     pub parts: Vec<StringPart>,
     pub multiline: bool,
@@ -131,6 +142,7 @@ impl StringLit {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub enum StringPart {
     Lit(String),
     Interp(Spanned<InterpExpr>),
@@ -151,6 +163,7 @@ pub enum StringPart {
 /// Keep this enum in sync with [`Expr`] when adding scalar variants;
 /// do **not** unify the two without explicit design discussion.
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[non_exhaustive]
 pub enum InterpExpr {
     Ref(Ref),
     Int(i64),

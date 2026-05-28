@@ -41,12 +41,14 @@ impl<T: serde::Serialize> serde::Serialize for Spanned<T> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
+#[non_exhaustive]
 pub enum Severity {
     Error,
     Warning,
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
+#[non_exhaustive]
 pub enum DiagKind {
     #[error("parse error: {0}")]
     Parse(String),
@@ -55,6 +57,7 @@ pub enum DiagKind {
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct Diag {
     pub kind: DiagKind,
     pub span: Span,
