@@ -139,24 +139,7 @@ impl Parser {
                 };
 
                 if matches!(self.peek_token().map(|t| &t.node), Some(Token::LBrace)) {
-                    // Label
-                    if lit.multiline {
-                        return Err(Diag::parse(
-                            str_span,
-                            "block label cannot be a multi-line string",
-                        ));
-                    }
-                    if lit.parts.iter().any(|p| matches!(p, StringPart::Interp(_))) {
-                        return Err(Diag::parse(
-                            str_span,
-                            "block label cannot contain interpolation",
-                        ));
-                    }
-                    let label_text = match lit.parts.into_iter().next() {
-                        Some(StringPart::Lit(s)) => s,
-                        None => String::new(),
-                        _ => unreachable!(),
-                    };
+                    let label_text = lit.try_into_bare_text(str_span.clone(), "block label")?;
                     self.parse_block_body(key, Some(Spanned::new(label_text, str_span)))
                 } else {
                     // Value
@@ -292,25 +275,7 @@ impl Parser {
             let seg_span = seg.span.clone();
             let seg_name = match seg.node {
                 Token::Ident(s) => s,
-                Token::String(lit) => {
-                    if lit.multiline {
-                        return Err(Diag::parse(
-                            seg_span,
-                            "ref segment cannot be a multi-line string".to_string(),
-                        ));
-                    }
-                    if lit.parts.iter().any(|p| matches!(p, StringPart::Interp(_))) {
-                        return Err(Diag::parse(
-                            seg_span,
-                            "ref segment cannot contain interpolation".to_string(),
-                        ));
-                    }
-                    match lit.parts.into_iter().next() {
-                        Some(StringPart::Lit(s)) => s,
-                        None => String::new(),
-                        _ => unreachable!(),
-                    }
-                }
+                Token::String(lit) => lit.try_into_bare_text(seg_span.clone(), "ref segment")?,
                 other => {
                     return Err(Diag::parse(
                         seg_span,

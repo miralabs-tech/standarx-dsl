@@ -569,17 +569,7 @@ impl<'a> Lexer<'a> {
                             _ => unreachable!(),
                         };
                         let seg_span = seg_start..self.pos;
-                        if lit.parts.iter().any(|p| matches!(p, StringPart::Interp(_))) {
-                            return Err(Diag::parse(
-                                seg_span,
-                                "ref segment cannot contain interpolation".to_string(),
-                            ));
-                        }
-                        let text = match lit.parts.into_iter().next() {
-                            Some(StringPart::Lit(s)) => s,
-                            None => String::new(),
-                            _ => unreachable!(),
-                        };
+                        let text = lit.try_into_bare_text(seg_span.clone(), "ref segment")?;
                         path.push(Spanned::new(Ident(text), seg_span));
                         continue;
                     }
