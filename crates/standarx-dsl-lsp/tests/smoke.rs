@@ -14,7 +14,10 @@ fn byte_offset_at_start_is_origin() {
     let src = "abc";
     assert_eq!(
         conversion::byte_offset_to_position(src, 0),
-        Position { line: 0, character: 0 }
+        Position {
+            line: 0,
+            character: 0
+        }
     );
 }
 
@@ -24,12 +27,18 @@ fn byte_offset_counts_lines() {
     // After first \n, line=1, character=0.
     assert_eq!(
         conversion::byte_offset_to_position(src, 2),
-        Position { line: 1, character: 0 }
+        Position {
+            line: 1,
+            character: 0
+        }
     );
     // Inside line 2.
     assert_eq!(
         conversion::byte_offset_to_position(src, 6),
-        Position { line: 2, character: 1 }
+        Position {
+            line: 2,
+            character: 1
+        }
     );
 }
 
@@ -39,13 +48,19 @@ fn byte_offset_uses_utf16_code_units() {
     let src = "é";
     assert_eq!(
         conversion::byte_offset_to_position(src, src.len()),
-        Position { line: 0, character: 1 }
+        Position {
+            line: 0,
+            character: 1
+        }
     );
     // '🦀' is U+1F980, outside BMP → 2 UTF-16 code units (surrogate pair).
     let src = "🦀";
     assert_eq!(
         conversion::byte_offset_to_position(src, src.len()),
-        Position { line: 0, character: 2 }
+        Position {
+            line: 0,
+            character: 2
+        }
     );
 }
 
@@ -54,7 +69,10 @@ fn byte_offset_clamps_out_of_range() {
     let src = "abc";
     assert_eq!(
         conversion::byte_offset_to_position(src, 999),
-        Position { line: 0, character: 3 }
+        Position {
+            line: 0,
+            character: 3
+        }
     );
 }
 
@@ -66,8 +84,20 @@ fn diag_to_lsp_carries_severity_and_source() {
     assert_eq!(lsp_diag.severity, Some(DiagnosticSeverity::ERROR));
     assert_eq!(lsp_diag.source.as_deref(), Some(DIAGNOSTIC_SOURCE));
     assert!(lsp_diag.message.contains("boom"));
-    assert_eq!(lsp_diag.range.start, Position { line: 0, character: 0 });
-    assert_eq!(lsp_diag.range.end, Position { line: 0, character: 3 });
+    assert_eq!(
+        lsp_diag.range.start,
+        Position {
+            line: 0,
+            character: 0
+        }
+    );
+    assert_eq!(
+        lsp_diag.range.end,
+        Position {
+            line: 0,
+            character: 3
+        }
+    );
 }
 
 #[test]

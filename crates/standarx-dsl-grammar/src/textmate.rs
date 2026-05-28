@@ -5,7 +5,7 @@
 //! The output is regex-based; semantic highlighting (key validity,
 //! ref resolution, type checks) is the LSP's job, not this file's.
 
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::SPEC;
 

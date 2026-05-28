@@ -58,18 +58,8 @@ pub const SPEC: GrammarSpec = GrammarSpec {
     language_constants: &["true", "false", "null"],
     line_comment: "#",
     brackets: &[("{", "}"), ("[", "]")],
-    auto_closing_pairs: &[
-        ("{", "}"),
-        ("[", "]"),
-        ("\"", "\""),
-        ("`", "`"),
-    ],
-    surrounding_pairs: &[
-        ("{", "}"),
-        ("[", "]"),
-        ("\"", "\""),
-        ("`", "`"),
-    ],
+    auto_closing_pairs: &[("{", "}"), ("[", "]"), ("\"", "\""), ("`", "`")],
+    surrounding_pairs: &[("{", "}"), ("[", "]"), ("\"", "\""), ("`", "`")],
     // Bare identifiers: [A-Za-z_][A-Za-z0-9_]* per `is_ident_start`
     // / `is_ident_continue` in the lexer. Ref-path segments and map
     // keys reuse this shape.

@@ -62,14 +62,13 @@ fn run() -> Result<(), String> {
             println!("{cfg}");
         }
         Mode::OutDir(dir) => {
-            fs::create_dir_all(&dir)
-                .map_err(|e| format!("create {}: {e}", dir.display()))?;
+            fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
             write_file(&dir.join("standarx.tmLanguage.json"), &tm)?;
-            write_file(
-                &dir.join("standarx.language-configuration.json"),
-                &cfg,
-            )?;
-            eprintln!("wrote standarx.tmLanguage.json + standarx.language-configuration.json to {}", dir.display());
+            write_file(&dir.join("standarx.language-configuration.json"), &cfg)?;
+            eprintln!(
+                "wrote standarx.tmLanguage.json + standarx.language-configuration.json to {}",
+                dir.display()
+            );
         }
     }
     Ok(())

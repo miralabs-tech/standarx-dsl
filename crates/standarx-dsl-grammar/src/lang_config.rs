@@ -6,7 +6,7 @@
 //! editors (JetBrains, Helix) tend to inline these as native config
 //! but can map this file 1:1.
 
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::SPEC;
 
@@ -14,11 +14,7 @@ use crate::SPEC;
 /// `serde_json::Value`. Callers serialize with
 /// `serde_json::to_string_pretty`.
 pub fn config_json() -> Value {
-    let brackets: Vec<Value> = SPEC
-        .brackets
-        .iter()
-        .map(|(o, c)| json!([o, c]))
-        .collect();
+    let brackets: Vec<Value> = SPEC.brackets.iter().map(|(o, c)| json!([o, c])).collect();
     let auto_closing: Vec<Value> = SPEC
         .auto_closing_pairs
         .iter()
