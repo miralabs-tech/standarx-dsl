@@ -44,36 +44,47 @@ jobs:
         target:
           - name: linux-x86_64
             os: ubuntu-latest
+            triple: x86_64-unknown-linux-gnu
             archive: tar.gz
             ext: ""
           - name: macos-x86_64
-            os: macos-13
+            os: macos-latest
+            triple: x86_64-apple-darwin
             archive: tar.gz
             ext: ""
           - name: macos-aarch64
             os: macos-latest
+            triple: aarch64-apple-darwin
             archive: tar.gz
             ext: ""
           - name: windows-x86_64
             os: windows-latest
+            triple: x86_64-pc-windows-msvc
             archive: zip
             ext: ".exe"
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain (${{ matrix.target.triple }})
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target.triple }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target.triple }}
 
-      - name: Build LSP + grammar-gen
-        run: cargo build --release -p standarx-dsl-lsp -p standarx-dsl-grammar --bins
+      - name: Build LSP + grammar-gen (${{ matrix.target.triple }})
+        run: cargo build --release --target ${{ matrix.target.triple }} -p standarx-dsl-lsp -p standarx-dsl-grammar --bins
 
       - name: Package (Unix)
         if: matrix.target.archive == 'tar.gz'
         shell: bash
+        env:
+          BIN_DIR: target/${{ matrix.target.triple }}/release
         run: |
           mkdir -p dist
-          cp target/release/standarx-lsp${{ matrix.target.ext }} dist/
-          cp target/release/standarx-grammar-gen${{ matrix.target.ext }} dist/
+          cp "${BIN_DIR}/standarx-lsp${{ matrix.target.ext }}" dist/
+          cp "${BIN_DIR}/standarx-grammar-gen${{ matrix.target.ext }}" dist/
           cp LICENSE dist/
           cp README.md dist/
           cp crates/standarx-dsl-grammar/dist/standarx.tmLanguage.json dist/
@@ -83,10 +94,12 @@ jobs:
       - name: Package (Windows)
         if: matrix.target.archive == 'zip'
         shell: pwsh
+        env:
+          BIN_DIR: target/${{ matrix.target.triple }}/release
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item "target/release/standarx-lsp${{ matrix.target.ext }}" dist/
-          Copy-Item "target/release/standarx-grammar-gen${{ matrix.target.ext }}" dist/
+          Copy-Item "$env:BIN_DIR/standarx-lsp${{ matrix.target.ext }}" dist/
+          Copy-Item "$env:BIN_DIR/standarx-grammar-gen${{ matrix.target.ext }}" dist/
           Copy-Item LICENSE dist/
           Copy-Item README.md dist/
           Copy-Item "crates/standarx-dsl-grammar/dist/standarx.tmLanguage.json" dist/
