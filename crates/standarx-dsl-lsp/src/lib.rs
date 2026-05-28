@@ -2,13 +2,12 @@
 //!
 //! Wraps [`standarx_dsl::parse`] and publishes syntactic diagnostics
 //! to any LSP-aware editor (VSCode, JetBrains, neovim, Helix, Emacs,
-//! Zed, …). The backend is **schema-agnostic** — semantic checks
-//! (valid keys, ref resolution, type matching) belong in downstream
-//! crates that wrap this server and inject their own schema.
+//! Zed, …). Out of the box the backend is syntax-only; downstream
+//! crates inject semantic checks via the [`Schema`] trait.
 //!
 //! # Quick start
 //!
-//! Embed in your own binary:
+//! Embed in your own binary with no schema:
 //!
 //! ```no_run
 //! # async fn run() {
@@ -16,11 +15,22 @@
 //! # }
 //! ```
 //!
-//! Or instantiate the [`Backend`] yourself via [`make_service`] when
-//! you need to register additional LSP methods (e.g. completion based
-//! on a downstream schema).
+//! Or with one or more schemas:
+//!
+//! ```no_run
+//! # use standarx_dsl_lsp::Schema;
+//! # use standarx_dsl::{Diag, File};
+//! # struct MySchema;
+//! # impl Schema for MySchema {
+//! #     fn validate(&self, _f: &File, _s: &str) -> Vec<Diag> { Vec::new() }
+//! # }
+//! # async fn run() {
+//! standarx_dsl_lsp::run_stdio_with_schemas(vec![Box::new(MySchema)]).await;
+//! # }
+//! ```
 
 pub mod conversion;
+pub mod schema;
 
 use std::collections::HashMap;
 
@@ -35,34 +45,64 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 use standarx_dsl::{Diag, Severity};
 
+pub use schema::Schema;
+
 /// Source label attached to every emitted diagnostic.
 pub const DIAGNOSTIC_SOURCE: &str = "standarx-dsl";
 
 /// LSP backend wrapping the standarx DSL parser. Holds per-document
-/// text state and emits syntactic diagnostics on open / change.
+/// text state and emits diagnostics on open / change. Optional
+/// [`Schema`] implementors layer semantic checks on top.
 pub struct Backend {
     client: Client,
     docs: RwLock<HashMap<Url, String>>,
+    schemas: Vec<Box<dyn Schema>>,
 }
 
 impl Backend {
+    /// Backend with no semantic schemas — syntactic diagnostics only.
     pub fn new(client: Client) -> Self {
+        Self::new_with(client, Vec::new())
+    }
+
+    /// Backend with a set of semantic schemas. Their diagnostics are
+    /// concatenated in registration order after parser-emitted
+    /// diagnostics.
+    pub fn new_with(client: Client, schemas: Vec<Box<dyn Schema>>) -> Self {
         Self {
             client,
             docs: RwLock::new(HashMap::new()),
+            schemas,
         }
     }
 
     async fn validate(&self, uri: Url, text: String) {
-        let diagnostics = match standarx_dsl::parse(&text) {
-            Ok(_) => Vec::new(),
-            Err(diag) => vec![diag_to_lsp(&text, &diag)],
-        };
+        let diagnostics = collect_diagnostics(&text, &self.schemas);
         self.docs.write().await.insert(uri.clone(), text);
         self.client
             .publish_diagnostics(uri, diagnostics, None)
             .await;
     }
+}
+
+/// Pure helper: parse `src`, run every schema's `validate`, and
+/// turn the resulting diagnostics into LSP-shaped `Diagnostic`s.
+///
+/// Exposed for testing and for embedders that want to drive the
+/// validation pipeline without going through tower-lsp.
+pub fn collect_diagnostics(src: &str, schemas: &[Box<dyn Schema>]) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    match standarx_dsl::parse(src) {
+        Ok(file) => {
+            for schema in schemas {
+                for diag in schema.validate(&file, src) {
+                    out.push(diag_to_lsp(src, &diag));
+                }
+            }
+        }
+        Err(diag) => out.push(diag_to_lsp(src, &diag)),
+    }
+    out
 }
 
 #[tower_lsp::async_trait]
@@ -127,20 +167,32 @@ pub fn diag_to_lsp(src: &str, diag: &Diag) -> Diagnostic {
     }
 }
 
-/// Construct an `LspService` wrapping a fresh [`Backend`]. Use this
-/// when embedding the backend in a larger LSP server or testing.
-pub fn make_service() -> (
-    LspService<Backend>,
-    tower_lsp::ClientSocket,
-) {
+/// Construct an `LspService` wrapping a fresh schema-less [`Backend`].
+pub fn make_service() -> (LspService<Backend>, tower_lsp::ClientSocket) {
     LspService::new(Backend::new)
 }
 
-/// Run the standarx LSP server over stdio. Blocks until the client
-/// closes the stream.
+/// Construct an `LspService` wrapping a [`Backend`] equipped with
+/// the given semantic schemas.
+pub fn make_service_with_schemas(
+    schemas: Vec<Box<dyn Schema>>,
+) -> (LspService<Backend>, tower_lsp::ClientSocket) {
+    LspService::new(move |client| Backend::new_with(client, schemas))
+}
+
+/// Run the standarx LSP server over stdio with no semantic schemas.
 pub async fn run_stdio() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
     let (service, socket) = make_service();
-    Server::new(stdin, stdout, socket).serve(service).await;
+    Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
+        .serve(service)
+        .await;
+}
+
+/// Run the standarx LSP server over stdio with the given semantic
+/// schemas plugged in.
+pub async fn run_stdio_with_schemas(schemas: Vec<Box<dyn Schema>>) {
+    let (service, socket) = make_service_with_schemas(schemas);
+    Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
+        .serve(service)
+        .await;
 }

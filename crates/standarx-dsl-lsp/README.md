@@ -135,28 +135,52 @@ In `~/.config/zed/settings.json`:
 
 ## Extending with a schema
 
-The backend is exposed as a library so downstream consumers can
-register additional LSP methods on top:
+Implement the [`Schema`](src/schema.rs) trait to layer semantic
+diagnostics on top of the parser's syntactic ones. The backend
+runs every registered schema after a successful parse and
+forwards their `Vec<Diag>` to the LSP client.
 
 ```rust
-use standarx_dsl_lsp::{make_service, Backend};
-use tower_lsp::Server;
+use standarx_dsl::{Diag, File};
+use standarx_dsl_lsp::{run_stdio_with_schemas, Schema};
+
+struct SxbSchema;
+
+impl Schema for SxbSchema {
+    fn validate(&self, file: &File, _src: &str) -> Vec<Diag> {
+        let mut diags = Vec::new();
+        // Walk file.stmts, check each block's `kind` matches a
+        // known `.sxb` entity ("project", "task", …), validate the
+        // keys inside, etc. Emit `Diag::schema(span, msg)` for
+        // errors and `Diag::schema_warn(span, msg)` for warnings.
+        diags
+    }
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let (service, socket) = make_service();
-    // Wrap `service` with your own LanguageServer impl that
-    // delegates syntactic methods to standarx-dsl-lsp's Backend
-    // and adds schema-aware completion / hover / go-to-def.
-    Server::new(tokio::io::stdin(), tokio::io::stdout(), socket)
-        .serve(service)
-        .await;
+    run_stdio_with_schemas(vec![Box::new(SxbSchema)]).await;
 }
 ```
 
-(A first-class `Schema` trait extension point will be added once
-both `standarbuild-lsp` and `standardoc-lsp` clarify their
-requirements — premature abstraction otherwise.)
+Multiple schemas can be combined — their diagnostics are
+concatenated in registration order:
+
+```rust
+run_stdio_with_schemas(vec![
+    Box::new(SxbSchema),
+    Box::new(DeprecationSchema),
+]).await;
+```
+
+For embedding inside a larger server (custom LSP methods, custom
+transport) use `make_service` / `make_service_with_schemas`
+instead and drive the `tower_lsp::Server` yourself.
+
+The trait is intentionally minimal in this first iteration —
+only `validate` is on the contract. Completion / hover / go-to-def
+extension methods will be added once a real consumer's needs
+clarify their shape.
 
 ## License
 

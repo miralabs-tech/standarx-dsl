@@ -5,8 +5,8 @@
 //! conversion (UTF-16 semantics, line counting) and the Diag→LSP
 //! Diagnostic shape, which are the bits we own.
 
-use standarx_dsl::Diag;
-use standarx_dsl_lsp::{conversion, diag_to_lsp, DIAGNOSTIC_SOURCE};
+use standarx_dsl::{Diag, File};
+use standarx_dsl_lsp::{collect_diagnostics, conversion, diag_to_lsp, Schema, DIAGNOSTIC_SOURCE};
 use tower_lsp::lsp_types::{DiagnosticSeverity, Position};
 
 #[test]
@@ -86,4 +86,49 @@ fn parse_error_round_trip_through_diag_to_lsp() {
     let lsp_diag = diag_to_lsp(src, &diag);
     assert_eq!(lsp_diag.severity, Some(DiagnosticSeverity::ERROR));
     assert!(lsp_diag.range.start.line == 0);
+}
+
+struct CountStmtsSchema;
+impl Schema for CountStmtsSchema {
+    fn validate(&self, file: &File, _src: &str) -> Vec<Diag> {
+        // Toy schema: warns when the file has > 1 stmt. Just here to
+        // exercise the collect_diagnostics path with a real schema.
+        if file.stmts.len() > 1 {
+            vec![Diag::schema_warn(0..0, "more than one stmt")]
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+#[test]
+fn collect_diagnostics_runs_no_schema_path() {
+    // Valid source, no schemas → empty diag list.
+    assert!(collect_diagnostics("k \"v\"", &[]).is_empty());
+}
+
+#[test]
+fn collect_diagnostics_surfaces_parser_error_even_without_schemas() {
+    let out = collect_diagnostics("{ broken }", &[]);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].severity, Some(DiagnosticSeverity::ERROR));
+}
+
+#[test]
+fn collect_diagnostics_runs_schemas_on_successful_parse() {
+    let schemas: Vec<Box<dyn Schema>> = vec![Box::new(CountStmtsSchema)];
+    // Two stmts → schema fires.
+    let out = collect_diagnostics("k \"v\"\nk2 \"v2\"", &schemas);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].severity, Some(DiagnosticSeverity::WARNING));
+    assert!(out[0].message.contains("more than one stmt"));
+}
+
+#[test]
+fn collect_diagnostics_skips_schemas_on_parse_failure() {
+    // Parser error short-circuits schemas — only the parse error is reported.
+    let schemas: Vec<Box<dyn Schema>> = vec![Box::new(CountStmtsSchema)];
+    let out = collect_diagnostics("{ broken }", &schemas);
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].severity, Some(DiagnosticSeverity::ERROR));
 }
