@@ -1,0 +1,139 @@
+name: Release
+
+# Fires on every annotated tag matching `v<semver>`. Creates a GitHub
+# Release with auto-generated notes, builds the LSP + grammar-gen
+# binaries for Linux/macOS/Windows, attaches them along with the
+# pre-generated editor grammar files (tmLanguage.json,
+# language-configuration.json) so non-Rust consumers can plug them in
+# without cloning the repo or installing a Rust toolchain.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: create
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  build-binaries:
+    name: Build ${{ matrix.target.name }}
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            archive: tar.gz
+            ext: ""
+          - name: macos-x86_64
+            os: macos-13
+            archive: tar.gz
+            ext: ""
+          - name: macos-aarch64
+            os: macos-latest
+            archive: tar.gz
+            ext: ""
+          - name: windows-x86_64
+            os: windows-latest
+            archive: zip
+            ext: ".exe"
+    runs-on: ${{ matrix.target.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build LSP + grammar-gen
+        run: cargo build --release -p standarx-dsl-lsp -p standarx-dsl-grammar --bins
+
+      - name: Package (Unix)
+        if: matrix.target.archive == 'tar.gz'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/release/standarx-lsp${{ matrix.target.ext }} dist/
+          cp target/release/standarx-grammar-gen${{ matrix.target.ext }} dist/
+          cp LICENSE dist/
+          cp README.md dist/
+          cp crates/standarx-dsl-grammar/dist/standarx.tmLanguage.json dist/
+          cp crates/standarx-dsl-grammar/dist/standarx.language-configuration.json dist/
+          tar czf "standarx-${GITHUB_REF_NAME}-${{ matrix.target.name }}.tar.gz" -C dist .
+
+      - name: Package (Windows)
+        if: matrix.target.archive == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "target/release/standarx-lsp${{ matrix.target.ext }}" dist/
+          Copy-Item "target/release/standarx-grammar-gen${{ matrix.target.ext }}" dist/
+          Copy-Item LICENSE dist/
+          Copy-Item README.md dist/
+          Copy-Item "crates/standarx-dsl-grammar/dist/standarx.tmLanguage.json" dist/
+          Copy-Item "crates/standarx-dsl-grammar/dist/standarx.language-configuration.json" dist/
+          Compress-Archive -Path dist/* -DestinationPath "standarx-$env:GITHUB_REF_NAME-${{ matrix.target.name }}.zip"
+
+      - name: Attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            standarx-${{ github.ref_name }}-${{ matrix.target.name }}.tar.gz
+            standarx-${{ github.ref_name }}-${{ matrix.target.name }}.zip
+
+  attach-editor-assets:
+    name: Attach editor-ready grammar files
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Stage grammar files for download
+        run: |
+          mkdir -p grammar-release
+          cp crates/standarx-dsl-grammar/dist/standarx.tmLanguage.json grammar-release/
+          cp crates/standarx-dsl-grammar/dist/standarx.language-configuration.json grammar-release/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            grammar-release/standarx.tmLanguage.json
+            grammar-release/standarx.language-configuration.json
+
+  publish-crates-io:
+    # Opt-in: only fires when a `CARGO_REGISTRY_TOKEN` secret is set
+    # on the repo. Publishes in dependency order:
+    #   standarx-dsl → standarx-dsl-grammar → standarx-dsl-lsp.
+    # Each step skips cleanly if the version is already on crates.io,
+    # so re-running the workflow on the same tag is a no-op.
+    name: Publish to crates.io
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: ${{ vars.PUBLISH_CRATES == 'true' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Publish standarx-dsl
+        run: cargo publish -p standarx-dsl --token ${{ secrets.CARGO_REGISTRY_TOKEN }} || true
+      - name: Publish standarx-dsl-grammar
+        run: cargo publish -p standarx-dsl-grammar --token ${{ secrets.CARGO_REGISTRY_TOKEN }} || true
+      - name: Publish standarx-dsl-lsp
+        run: cargo publish -p standarx-dsl-lsp --token ${{ secrets.CARGO_REGISTRY_TOKEN }} || true

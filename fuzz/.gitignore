@@ -1,0 +1,7 @@
+target
+artifacts
+# Keep `corpus/` versioned — seed inputs guide the fuzzer toward
+# interesting branches on every fresh run. Uncomment to ignore.
+# corpus
+coverage
+Cargo.lock

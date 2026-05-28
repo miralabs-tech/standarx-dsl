@@ -1,7 +1,36 @@
+# Rust build artefacts
 /target
 /Cargo.lock
+*.rs.bk
+*.profraw
+perf.data*
+flamegraph.svg
+
+# Coverage reports
+*.lcov
+coverage/
+cobertura.xml
+tarpaulin-report.html
+
+# Debug symbols (Windows / macOS)
+*.pdb
+*.dSYM/
+
+# Workspace-specific local state
 standardoc.sxd
 .claude/
 .standardoc/
 .standarflow/
 .mcp.json
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS noise
+.DS_Store
+Thumbs.db
+Desktop.ini

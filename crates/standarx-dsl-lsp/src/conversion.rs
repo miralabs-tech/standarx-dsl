@@ -38,3 +38,40 @@ pub fn span_to_range(src: &str, span: &std::ops::Range<usize>) -> Range {
     let end = byte_offset_to_position(src, span.end);
     Range { start, end }
 }
+
+/// Inverse of [`byte_offset_to_position`]. Walks lines until the
+/// target row, then converts UTF-16 code units back to a UTF-8 byte
+/// offset within that line. Out-of-range positions clamp to
+/// `src.len()`.
+pub fn position_to_byte_offset(src: &str, pos: Position) -> usize {
+    if pos.line == 0 {
+        return utf16_units_to_byte_offset(src, 0, pos.character);
+    }
+    let mut line: u32 = 0;
+    for (i, b) in src.as_bytes().iter().enumerate() {
+        if *b == b'\n' {
+            line += 1;
+            if line == pos.line {
+                return utf16_units_to_byte_offset(src, i + 1, pos.character);
+            }
+        }
+    }
+    // Past last line — clamp to end.
+    src.len()
+}
+
+fn utf16_units_to_byte_offset(src: &str, line_start: usize, target_units: u32) -> usize {
+    let tail = &src[line_start..];
+    let mut units_consumed: u32 = 0;
+    for (idx, ch) in tail.char_indices() {
+        if units_consumed >= target_units {
+            return line_start + idx;
+        }
+        // Stop at end of line.
+        if ch == '\n' {
+            return line_start + idx;
+        }
+        units_consumed = units_consumed.saturating_add(ch.len_utf16() as u32);
+    }
+    line_start + tail.len()
+}

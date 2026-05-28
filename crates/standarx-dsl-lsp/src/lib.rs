@@ -37,9 +37,11 @@ use std::collections::HashMap;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result as LspResult;
 use tower_lsp::lsp_types::{
-    Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, MessageType,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
+    CompletionOptions, CompletionParams, CompletionResponse, Diagnostic, DiagnosticSeverity,
+    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams, HoverProviderCapability,
+    InitializeParams, InitializeResult, InitializedParams, MessageType, OneOf, ServerCapabilities,
+    ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
 };
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
@@ -108,11 +110,21 @@ pub fn collect_diagnostics(src: &str, schemas: &[Box<dyn Schema>]) -> Vec<Diagno
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> LspResult<InitializeResult> {
+        // Advertise the schema-aware features unconditionally — when
+        // no schema is registered, the corresponding handlers return
+        // empty answers (cheap) and the editor sees "no candidates"
+        // / "no info" instead of "feature unsupported".
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                completion_provider: Some(CompletionOptions {
+                    trigger_characters: Some(vec![".".into(), "$".into()]),
+                    ..CompletionOptions::default()
+                }),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
+                definition_provider: Some(OneOf::Left(true)),
                 ..ServerCapabilities::default()
             },
             server_info: Some(ServerInfo {
@@ -150,6 +162,77 @@ impl LanguageServer for Backend {
         self.docs.write().await.remove(&uri);
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
     }
+
+    async fn completion(&self, params: CompletionParams) -> LspResult<Option<CompletionResponse>> {
+        let uri = params.text_document_position.text_document.uri;
+        let position = params.text_document_position.position;
+        let Some(text) = self.doc_text(&uri).await else {
+            return Ok(None);
+        };
+        let Ok(file) = standarx_dsl::parse(&text) else {
+            return Ok(None);
+        };
+        let offset = conversion::position_to_byte_offset(&text, position);
+        let mut items: Vec<tower_lsp::lsp_types::CompletionItem> = Vec::new();
+        for schema in &self.schemas {
+            items.extend(schema.completion(&file, &text, offset));
+        }
+        if items.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(CompletionResponse::Array(items)))
+        }
+    }
+
+    async fn hover(&self, params: HoverParams) -> LspResult<Option<Hover>> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let Some(text) = self.doc_text(&uri).await else {
+            return Ok(None);
+        };
+        let Ok(file) = standarx_dsl::parse(&text) else {
+            return Ok(None);
+        };
+        let offset = conversion::position_to_byte_offset(&text, position);
+        // First schema with a non-None answer wins — composing hover
+        // payloads across schemas yields a worse UX than picking the
+        // most specific one.
+        for schema in &self.schemas {
+            if let Some(h) = schema.hover(&file, &text, offset) {
+                return Ok(Some(h));
+            }
+        }
+        Ok(None)
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> LspResult<Option<GotoDefinitionResponse>> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let position = params.text_document_position_params.position;
+        let Some(text) = self.doc_text(&uri).await else {
+            return Ok(None);
+        };
+        let Ok(file) = standarx_dsl::parse(&text) else {
+            return Ok(None);
+        };
+        let offset = conversion::position_to_byte_offset(&text, position);
+        for schema in &self.schemas {
+            if let Some(loc) = schema.goto_definition(&file, &text, offset) {
+                return Ok(Some(GotoDefinitionResponse::Scalar(loc)));
+            }
+        }
+        Ok(None)
+    }
+}
+
+impl Backend {
+    /// Read the cached text for a document URI. Returns `None`
+    /// when the document is not open in this server instance.
+    async fn doc_text(&self, uri: &Url) -> Option<String> {
+        self.docs.read().await.get(uri).cloned()
+    }
 }
 
 /// Convert a `standarx_dsl::Diag` into an LSP `Diagnostic` anchored
@@ -160,6 +243,11 @@ pub fn diag_to_lsp(src: &str, diag: &Diag) -> Diagnostic {
         severity: Some(match diag.severity {
             Severity::Error => DiagnosticSeverity::ERROR,
             Severity::Warning => DiagnosticSeverity::WARNING,
+            // `standarx_dsl::Severity` is #[non_exhaustive]; future
+            // additions (e.g. Info, Note) land here as the closest
+            // LSP equivalent. Bump this arm when standarx-dsl grows
+            // a variant we want to surface distinctly.
+            _ => DiagnosticSeverity::INFORMATION,
         }),
         source: Some(DIAGNOSTIC_SOURCE.into()),
         message: diag.kind.to_string(),

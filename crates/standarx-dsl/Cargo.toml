@@ -12,8 +12,15 @@ description = "Reusable DSL parser for the standar* ecosystem (lexer + parser + 
 keywords = ["dsl", "parser", "lexer", "config", "standarx"]
 categories = ["parser-implementations", "config"]
 
+[features]
+default = ["serde"]
+# Derives `serde::Serialize` on every public AST/Diag type and a
+# transparent forwarding impl on `Spanned<T>`. Opt out with
+# `default-features = false` for a leaner build.
+serde = ["dep:serde"]
+
 [dependencies]
-serde.workspace = true
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]

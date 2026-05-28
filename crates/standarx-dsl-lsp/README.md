@@ -136,24 +136,57 @@ In `~/.config/zed/settings.json`:
 ## Extending with a schema
 
 Implement the [`Schema`](src/schema.rs) trait to layer semantic
-diagnostics on top of the parser's syntactic ones. The backend
-runs every registered schema after a successful parse and
-forwards their `Vec<Diag>` to the LSP client.
+features on top of the parser's syntactic ones. The trait surface:
+
+| Method | Default | Returns |
+|---|---|---|
+| `validate(file, src)` | required | `Vec<Diag>` — extra diagnostics. |
+| `completion(file, src, offset)` | empty | `Vec<CompletionItem>` — completion candidates. |
+| `hover(file, src, offset)` | `None` | `Option<Hover>` — type / doc / shape under the cursor. |
+| `goto_definition(file, src, offset)` | `None` | `Option<Location>` — definition target. |
+
+Implement only what you need; the defaults make every method
+optional. `CompletionItem`, `Hover`, `Location` are re-exported
+from `tower_lsp::lsp_types` so there is no intermediate translation
+layer.
 
 ```rust
 use standarx_dsl::{Diag, File};
-use standarx_dsl_lsp::{run_stdio_with_schemas, Schema};
+use standarx_dsl_lsp::{
+    run_stdio_with_schemas, CompletionItem, Hover, HoverContents,
+    Location, MarkupContent, MarkupKind, Schema,
+};
 
 struct SxbSchema;
 
 impl Schema for SxbSchema {
-    fn validate(&self, file: &File, _src: &str) -> Vec<Diag> {
-        let mut diags = Vec::new();
+    fn validate(&self, _file: &File, _src: &str) -> Vec<Diag> {
         // Walk file.stmts, check each block's `kind` matches a
-        // known `.sxb` entity ("project", "task", …), validate the
-        // keys inside, etc. Emit `Diag::schema(span, msg)` for
-        // errors and `Diag::schema_warn(span, msg)` for warnings.
-        diags
+        // known `.sxb` entity ("project", "task", …), validate
+        // the keys inside, etc.
+        Vec::new()
+    }
+
+    fn completion(
+        &self,
+        _file: &File,
+        _src: &str,
+        _offset: usize,
+    ) -> Vec<CompletionItem> {
+        vec![
+            CompletionItem::new_simple("project".into(), "block kind".into()),
+            CompletionItem::new_simple("task".into(),    "block kind".into()),
+        ]
+    }
+
+    fn hover(&self, _file: &File, _src: &str, _offset: usize) -> Option<Hover> {
+        Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: "**project** — top-level entity.".into(),
+            }),
+            range: None,
+        })
     }
 }
 
@@ -163,24 +196,22 @@ async fn main() {
 }
 ```
 
-Multiple schemas can be combined — their diagnostics are
-concatenated in registration order:
+The backend advertises `completionProvider`, `hoverProvider`, and
+`definitionProvider` capabilities unconditionally — when no schema
+overrides a method, the editor sees "no candidates" / "no info"
+rather than "feature unsupported".
 
-```rust
-run_stdio_with_schemas(vec![
-    Box::new(SxbSchema),
-    Box::new(DeprecationSchema),
-]).await;
-```
+Composition rules across multiple schemas:
+
+- `validate` and `completion` results are **concatenated** in
+  registration order.
+- `hover` and `goto_definition` are **first-wins** — composing
+  these across schemas yields a worse UX than picking the most
+  specific answer.
 
 For embedding inside a larger server (custom LSP methods, custom
-transport) use `make_service` / `make_service_with_schemas`
-instead and drive the `tower_lsp::Server` yourself.
-
-The trait is intentionally minimal in this first iteration —
-only `validate` is on the contract. Completion / hover / go-to-def
-extension methods will be added once a real consumer's needs
-clarify their shape.
+transport) use `make_service` / `make_service_with_schemas` instead
+and drive the `tower_lsp::Server` yourself.
 
 ## License
 

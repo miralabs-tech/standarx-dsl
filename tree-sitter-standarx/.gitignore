@@ -1,0 +1,19 @@
+node_modules
+bun.lock
+*.tgz
+build
+out
+dist
+coverage
+*.lcov
+.cache
+
+# Editor / OS noise
+.idea
+.DS_Store
+
+# The generated parser.c and friends ARE committed so downstream
+# consumers (nvim-treesitter, Helix, Zed, GitHub Linguist) can
+# install the grammar without running `tree-sitter generate`
+# locally. Regenerate with `bunx tree-sitter generate` and commit
+# the result.

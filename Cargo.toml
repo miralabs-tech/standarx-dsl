@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+# `fuzz/` is a cargo-fuzz sub-crate with its own workspace root —
+# it pulls in libfuzzer-sys (nightly-only, Linux/macOS) and must
+# stay out of the main workspace so stable cargo doesn't trip over
+# it. Run fuzz targets via `cargo +nightly fuzz run <target>` from
+# the workspace root; cargo-fuzz auto-detects `fuzz/`.
+exclude = ["fuzz"]
 
 # `version` is intentionally NOT shared at the workspace level — each
 # crate manages its own pace. `standarx-dsl` is at 1.0 (frozen public

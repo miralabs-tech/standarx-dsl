@@ -1,0 +1,98 @@
+================================================================================
+plain string with escape sequences
+================================================================================
+greeting "hello \"world\""
+multi "line\nwith\tabs"
+unicode "café \u{1F980}"
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (plain_string (escape_sequence) (escape_sequence)))
+  (assignment
+    key: (identifier)
+    value: (plain_string (escape_sequence) (escape_sequence)))
+  (assignment
+    key: (identifier)
+    value: (plain_string (escape_sequence))))
+
+================================================================================
+inline template no interpolation
+================================================================================
+greeting `hello world`
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (template_inline)))
+
+================================================================================
+inline template with interpolation — ref
+================================================================================
+greeting `hello ${name}`
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (template_inline
+      (interpolation
+        (identifier)))))
+
+================================================================================
+inline template with interpolation — ref path
+================================================================================
+greeting `hi ${user.name}!`
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (template_inline
+      (interpolation
+        (ref (identifier) (identifier))))))
+
+================================================================================
+inline template with interpolation — scalar
+================================================================================
+greeting `count ${42}`
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (template_inline
+      (interpolation
+        (integer)))))
+
+================================================================================
+multi-line template no interpolation
+================================================================================
+script ```
+line one
+line two
+```
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (template_multiline)))
+
+================================================================================
+multi-line template with interpolation
+================================================================================
+script ```
+hello ${name}
+done
+```
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    key: (identifier)
+    value: (template_multiline
+      (interpolation
+        (identifier)))))
