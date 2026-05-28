@@ -73,3 +73,48 @@ fn parse_error_carries_span() {
     let err = standarx_dsl::parse("{ broken }").expect_err("expected parse error");
     assert!(err.is_error());
 }
+
+fn parse_single_string(src: &str) -> String {
+    use standarx_dsl::ast::{Expr, Stmt, StringPart};
+    let file = standarx_dsl::parse(src).expect("parse");
+    assert_eq!(file.stmts.len(), 1, "expected exactly one stmt: {src:?}");
+    let Stmt::Assign(assign) = &file.stmts[0].node else {
+        panic!("expected assign stmt, got {:?}", file.stmts[0].node);
+    };
+    let Expr::String(lit) = &assign.value.node else {
+        panic!("expected string expr, got {:?}", assign.value.node);
+    };
+    assert_eq!(lit.parts.len(), 1, "expected single lit part: {src:?}");
+    let StringPart::Lit(s) = &lit.parts[0] else {
+        panic!("expected Lit part, got {:?}", lit.parts[0]);
+    };
+    s.clone()
+}
+
+#[test]
+fn multibyte_chars_in_plain_string_roundtrip() {
+    // 2-byte (Latin-1 supplement).
+    assert_eq!(parse_single_string("k \"café\""), "café");
+    // 3-byte (CJK ideograms).
+    assert_eq!(parse_single_string("k \"日本語\""), "日本語");
+    // 4-byte (emoji, supplementary plane).
+    assert_eq!(parse_single_string("k \"🦀\""), "🦀");
+    // Mixed + multi-byte adjacent to an ASCII escape — stresses the
+    // "no special-case byte between UTF-8 continuation bytes" invariant
+    // of `push_byte`.
+    assert_eq!(parse_single_string(r#"k "café \"x\" 🦀""#), "café \"x\" 🦀");
+}
+
+#[test]
+fn multibyte_chars_in_template_string_roundtrip() {
+    // Same alphabet through the inline template lexer (`...`).
+    assert_eq!(parse_single_string("k `café`"), "café");
+    assert_eq!(parse_single_string("k `日本語 🦀`"), "日本語 🦀");
+}
+
+#[test]
+fn multibyte_chars_in_multiline_template_roundtrip() {
+    // Through `lex_multiline_template` (triple-backtick block).
+    let src = "k ```\ncafé\n日本語\n🦀\n```";
+    assert_eq!(parse_single_string(src), "\ncafé\n日本語\n🦀\n");
+}

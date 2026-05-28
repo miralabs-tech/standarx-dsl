@@ -625,6 +625,14 @@ fn push_byte(buf: &mut String, b: u8) {
     if b.is_ascii() {
         buf.push(b as char);
     } else {
+        // SAFETY: `buf` must remain valid UTF-8 across calls. The source is `&str`
+        // (see `Lexer::new`), so every multi-byte code-point in the input is already
+        // a valid UTF-8 sequence. Callers (`lex_plain_string_token`,
+        // `lex_inline_template`, `lex_multiline_template`) bump bytes one by one
+        // and only intercept on `\\`, `"`, `\n`, `` ` ``, `$` — all ASCII (< 0x80),
+        // so they cannot match a UTF-8 continuation byte (0x80..=0xBF). Hence the
+        // bytes of a single code-point arrive here consecutively with nothing
+        // inserted between, and the `Vec<u8>` ends every call as valid UTF-8.
         let bytes = unsafe { buf.as_mut_vec() };
         bytes.push(b);
     }
