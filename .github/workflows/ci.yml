@@ -79,6 +79,30 @@ jobs:
       - run: cargo fuzz build
         working-directory: fuzz
 
+  tree-sitter:
+    name: tree-sitter grammar (generate + test + drift)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - name: Install tree-sitter-cli
+        run: bun install
+        working-directory: tree-sitter-standarx
+      - name: Generate parser
+        run: bunx tree-sitter generate
+        working-directory: tree-sitter-standarx
+      - name: Run corpus tests
+        run: bunx tree-sitter test
+        working-directory: tree-sitter-standarx
+      - name: Assert no drift vs versioned src/
+        run: |
+          if ! git diff --quiet -- tree-sitter-standarx/src; then
+            echo "::error::tree-sitter-standarx/src is out of date."
+            echo "Run 'cd tree-sitter-standarx && bunx tree-sitter generate' and commit the result."
+            git --no-pager diff -- tree-sitter-standarx/src
+            exit 1
+          fi
+
   msrv:
     name: build (MSRV 1.95)
     runs-on: ubuntu-latest

@@ -12,11 +12,13 @@ interpolated strings — designed to host config files like
 
 ## Workspace layout
 
-| Crate | Version | Path | Purpose |
-|---|---|---|---|
-| [`standarx-dsl`](crates/standarx-dsl) | `1.0.0` | `crates/standarx-dsl` | Lexer + parser + AST + diagnostics. The core. **Frozen semver contract.** |
-| [`standarx-dsl-grammar`](crates/standarx-dsl-grammar) | `0.1.x` | `crates/standarx-dsl-grammar` | Emits `*.tmLanguage.json` + `*.language-configuration.json` from a single Rust source. Pre-generated files versioned in `dist/`. |
-| [`standarx-dsl-lsp`](crates/standarx-dsl-lsp) | `0.1.x` | `crates/standarx-dsl-lsp` | LSP server (`standarx-lsp` binary) wrapping `parse()`. Publishes syntactic diagnostics. Schema-aware features plug on top. |
+| Path | Version | Purpose |
+|---|---|---|
+| [`crates/standarx-dsl`](crates/standarx-dsl) | `1.0.0` | Lexer + parser + AST + diagnostics. The core. **Frozen semver contract.** |
+| [`crates/standarx-dsl-grammar`](crates/standarx-dsl-grammar) | `0.1.x` | Emits `*.tmLanguage.json` + `*.language-configuration.json` from a single Rust source. Pre-generated files versioned in `dist/`. |
+| [`crates/standarx-dsl-lsp`](crates/standarx-dsl-lsp) | `0.1.x` | LSP server (`standarx-lsp` binary) wrapping `parse()`. Publishes syntactic diagnostics. Schema-aware features (completion / hover / goto-def) plug on top via the `Schema` trait. |
+| [`tree-sitter-standarx`](tree-sitter-standarx) | `0.1.x` | Tree-sitter grammar covering native highlighting in neovim / Helix / Zed / GitHub Linguist. Companion to the Rust parser; corpus tests pin the parse-tree shape. |
+| [`fuzz`](fuzz) | `0.0.0` | Cargo-fuzz harnesses on `parse()` and `parse_with_recovery()`. Nightly + libFuzzer; excluded from the stable workspace. |
 
 Versions are deliberately decoupled — `standarx-dsl` is stable; the
 editor-integration crates are still moving.

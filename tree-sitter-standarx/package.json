@@ -1,0 +1,36 @@
+{
+  "name": "tree-sitter-standarx",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for the standarx DSL (.sxb, .sxd)",
+  "license": "MIT",
+  "repository": "github:miralabs-tech/standarx-dsl",
+  "keywords": [
+    "parser",
+    "lexer",
+    "tree-sitter",
+    "standarx",
+    "sxb",
+    "sxd"
+  ],
+  "main": "bindings/node",
+  "types": "bindings/node",
+  "scripts": {
+    "build": "tree-sitter generate",
+    "test": "tree-sitter test",
+    "parse": "tree-sitter parse"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.26.9"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.standarx",
+      "file-types": [
+        "sxb",
+        "sxd"
+      ],
+      "highlights": "queries/highlights.scm",
+      "injections": "queries/injections.scm"
+    }
+  ]
+}
