@@ -12,16 +12,14 @@ interpolated strings — designed to host config files like
 
 ## Workspace layout
 
-| Crate | Path | Purpose |
-|---|---|---|
-| [`standarx-dsl`](crates/standarx-dsl) | `crates/standarx-dsl` | Lexer + parser + AST + diagnostics. The core. |
-| [`standarx-dsl-grammar`](crates/standarx-dsl-grammar) | `crates/standarx-dsl-grammar` | Emits `*.tmLanguage.json` + `*.language-configuration.json` from a single Rust source. Pre-generated files versioned in `dist/`. |
-| [`standarx-dsl-lsp`](crates/standarx-dsl-lsp) | `crates/standarx-dsl-lsp` | LSP server (`standarx-lsp` binary) wrapping `parse()`. Publishes syntactic diagnostics. Schema-aware features plug on top. |
+| Crate | Version | Path | Purpose |
+|---|---|---|---|
+| [`standarx-dsl`](crates/standarx-dsl) | `1.0.0` | `crates/standarx-dsl` | Lexer + parser + AST + diagnostics. The core. **Frozen semver contract.** |
+| [`standarx-dsl-grammar`](crates/standarx-dsl-grammar) | `0.1.x` | `crates/standarx-dsl-grammar` | Emits `*.tmLanguage.json` + `*.language-configuration.json` from a single Rust source. Pre-generated files versioned in `dist/`. |
+| [`standarx-dsl-lsp`](crates/standarx-dsl-lsp) | `0.1.x` | `crates/standarx-dsl-lsp` | LSP server (`standarx-lsp` binary) wrapping `parse()`. Publishes syntactic diagnostics. Schema-aware features plug on top. |
 
-## Status
-
-Pre-1.0. The grammar is stable; public Rust APIs may evolve. Pin to
-exact `0.1.x` until v1.0.
+Versions are deliberately decoupled — `standarx-dsl` is stable; the
+editor-integration crates are still moving.
 
 ## Quick parser usage
 

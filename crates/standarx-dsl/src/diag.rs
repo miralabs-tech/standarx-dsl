@@ -86,7 +86,23 @@ impl Diag {
         }
     }
 
+    #[must_use]
     pub fn is_error(&self) -> bool {
         matches!(self.severity, Severity::Error)
+    }
+}
+
+impl std::fmt::Display for Diag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Delegate to the kind so `format!("{diag}")` reads the same as
+        // `format!("{}", diag.kind)` — the span / severity belong on the
+        // caller's renderer, not the bare Display.
+        self.kind.fmt(f)
+    }
+}
+
+impl std::error::Error for Diag {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.kind)
     }
 }

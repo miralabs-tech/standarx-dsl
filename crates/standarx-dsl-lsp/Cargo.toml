@@ -1,11 +1,13 @@
 [package]
 name = "standarx-dsl-lsp"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 description = "Universal Language Server Protocol backend for the standarx DSL — parses .sxb/.sxd/* documents and publishes syntactic diagnostics. Downstream schemas plug on top."
 keywords = ["lsp", "dsl", "language-server", "standarx", "editor"]
 categories = ["development-tools", "text-editors"]

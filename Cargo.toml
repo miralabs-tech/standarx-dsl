@@ -2,16 +2,20 @@
 resolver = "2"
 members = ["crates/*"]
 
+# `version` is intentionally NOT shared at the workspace level — each
+# crate manages its own pace. `standarx-dsl` is at 1.0 (frozen public
+# contract); the editor-integration crates stay 0.1.x while their
+# surface is still moving.
 [workspace.package]
-version = "0.1.0"
 edition = "2021"
 authors = ["miralabs-tech"]
 license = "MIT"
 repository = "https://github.com/miralabs-tech/standarx-dsl"
+homepage = "https://github.com/miralabs-tech/standarx-dsl"
 rust-version = "1.95"
 
 [workspace.dependencies]
-standarx-dsl = { version = "0.1.0", path = "crates/standarx-dsl" }
+standarx-dsl = { version = "1.0.0", path = "crates/standarx-dsl" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 proptest = "1"

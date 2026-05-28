@@ -1,11 +1,13 @@
 [package]
 name = "standarx-dsl-grammar"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 description = "Editor-agnostic grammar definitions for the standarx DSL: emits TextMate grammar (.tmLanguage.json) and VSCode-style language-configuration.json from a single Rust source of truth."
 keywords = ["dsl", "textmate", "syntax-highlighting", "editor", "standarx"]
 categories = ["development-tools", "text-editors"]

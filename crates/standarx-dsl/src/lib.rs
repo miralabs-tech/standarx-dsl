@@ -42,6 +42,7 @@ pub use diag::{Diag, DiagKind, Severity, Span, Spanned};
 /// Errors carry a [`Span`] referring to the offending byte range in `src`
 /// — downstream consumers can render them however they prefer (see
 /// `standarbuild`'s `diag::render` module for a sample renderer).
+#[must_use = "parse() returns a Result that carries diagnostics; ignoring it discards parse errors"]
 pub fn parse(src: &str) -> Result<File, Diag> {
     let tokens = lexer::tokenize(src)?;
     parser::parse_tokens(tokens, src.len()..src.len())
