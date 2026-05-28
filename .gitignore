@@ -1,6 +1,7 @@
 /target
 /Cargo.lock
+standardoc.sxd
+.claude/
 .standardoc/
 .standarflow/
-standardoc.sxd
 .mcp.json
