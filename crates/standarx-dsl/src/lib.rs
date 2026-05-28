@@ -47,3 +47,43 @@ pub fn parse(src: &str) -> Result<File, Diag> {
     let tokens = lexer::tokenize(src)?;
     parser::parse_tokens(tokens, src.len()..src.len())
 }
+
+/// Parse a source string with **error recovery**: always returns a
+/// (partial) [`File`] plus the list of every parser diagnostic that
+/// fired during the walk.
+///
+/// Useful for editor / LSP workflows where the user is mid-edit and
+/// reporting every problem in one pass is more helpful than
+/// fail-fast. The recovery strategy is intentionally conservative:
+///
+/// - Lexer errors are still fatal (there's no token stream to walk).
+///   The returned `File` is empty and the single diagnostic is in
+///   the `Vec`.
+/// - At the top level, every failed statement is dropped, the
+///   parser syncs to the next likely statement start (next `Ident`
+///   at brace-depth 0), and parsing continues.
+/// - Block-internal errors fail the whole enclosing top-level
+///   statement; recovery resumes at the next top-level boundary.
+///   This keeps diagnostic positions intuitive (every reported error
+///   lives where the user can find it) at the cost of some lost
+///   coverage inside large failing blocks.
+///
+/// The returned `Vec` is empty iff parsing fully succeeded — at
+/// which point `parse_with_recovery(src)` and `parse(src).ok()`
+/// agree on the file.
+#[must_use = "parse_with_recovery() returns the diagnostic list; ignoring it loses the errors"]
+pub fn parse_with_recovery(src: &str) -> (File, Vec<Diag>) {
+    let tokens = match lexer::tokenize(src) {
+        Ok(t) => t,
+        Err(diag) => {
+            return (
+                File {
+                    stmts: Vec::new(),
+                    trailing_trivia: Vec::new(),
+                },
+                vec![diag],
+            );
+        }
+    };
+    parser::parse_tokens_with_recovery(tokens, src.len()..src.len())
+}

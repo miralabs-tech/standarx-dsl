@@ -7,6 +7,20 @@ pub fn parse_tokens(items: Vec<LexItem>, eof: Span) -> Result<File, Diag> {
     p.parse_file()
 }
 
+/// Recovery-aware variant of [`parse_tokens`]. Always returns a
+/// [`File`]; failures land in the `Vec<Diag>`. After each top-level
+/// statement error, the parser syncs to the next plausible
+/// statement start (next `Ident` at brace-depth 0) and continues.
+///
+/// Block-internal errors propagate to the enclosing statement (the
+/// whole block is discarded), then sync happens at the outer level.
+/// That keeps the recovery simple and predictable — every reported
+/// error sits at a top-level boundary the user can see.
+pub fn parse_tokens_with_recovery(items: Vec<LexItem>, eof: Span) -> (File, Vec<Diag>) {
+    let mut p = Parser { items, pos: 0, eof };
+    p.parse_file_with_recovery()
+}
+
 struct Parser {
     items: Vec<LexItem>,
     pos: usize,
@@ -105,6 +119,78 @@ impl Parser {
                 node: stmt,
                 span,
             });
+        }
+    }
+
+    fn parse_file_with_recovery(&mut self) -> (File, Vec<Diag>) {
+        let mut stmts: Vec<StmtNode> = Vec::new();
+        let mut errors: Vec<Diag> = Vec::new();
+        // Trivia gathered before a failed statement is dropped —
+        // attaching it to the next successful stmt would put it in
+        // a misleading position.
+        loop {
+            let mut raw = self.take_leading_trivia();
+            if self.peek_token().is_none() {
+                attach_prev_trailing(&mut stmts, &mut raw);
+                let trailing_trivia: Vec<Trivia> = raw.into_iter().map(|(t, _)| t).collect();
+                return (
+                    File {
+                        stmts,
+                        trailing_trivia,
+                    },
+                    errors,
+                );
+            }
+            if !stmts.is_empty() {
+                attach_prev_trailing(&mut stmts, &mut raw);
+            }
+            let leading: Vec<Trivia> = raw.into_iter().map(|(t, _)| t).collect();
+            match self.parse_stmt_body() {
+                Ok((stmt, span)) => {
+                    stmts.push(StmtNode {
+                        leading,
+                        trailing: None,
+                        node: stmt,
+                        span,
+                    });
+                }
+                Err(e) => {
+                    errors.push(e);
+                    // `sync_to_next_stmt` guarantees progress: it
+                    // either advances `pos` past the offending region
+                    // or reaches EOF (in which case the next loop
+                    // iteration returns).
+                    self.sync_to_next_stmt();
+                }
+            }
+        }
+    }
+
+    /// Skip tokens until the next likely statement start: an `Ident`
+    /// at brace/bracket depth 0. Balanced bracket pairs encountered
+    /// on the way are consumed whole; unmatched top-level closers are
+    /// skipped to guarantee forward progress.
+    fn sync_to_next_stmt(&mut self) {
+        let mut depth: i32 = 0;
+        while let Some(tok) = self.peek_token() {
+            match &tok.node {
+                Token::LBrace | Token::LBracket => {
+                    depth += 1;
+                    self.bump_token();
+                }
+                Token::RBrace | Token::RBracket => {
+                    if depth > 0 {
+                        depth -= 1;
+                    }
+                    // Always consume — keeps recovery progressing
+                    // even on unmatched top-level closers.
+                    self.bump_token();
+                }
+                Token::Ident(_) if depth == 0 => return,
+                _ => {
+                    self.bump_token();
+                }
+            }
         }
     }
 

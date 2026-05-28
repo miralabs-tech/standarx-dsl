@@ -21,5 +21,9 @@ test = false
 doc = false
 bench = false
 
-# parse_with_recovery target is added in phase 2 (see fuzz_targets/
-# parse_with_recovery.rs).
+[[bin]]
+name = "parse_with_recovery"
+path = "fuzz_targets/parse_with_recovery.rs"
+test = false
+doc = false
+bench = false

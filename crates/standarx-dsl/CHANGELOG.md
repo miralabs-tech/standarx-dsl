@@ -55,6 +55,13 @@ each can have a *new* API added next to it without breaking:
 - `#[non_exhaustive]` on 7 public enums and 9 public structs (see
   "Future-proofing policy" above) so 1.x minors can grow variants
   and fields additively.
+- `parse_with_recovery(src) -> (File, Vec<Diag>)` — recovery-aware
+  parser. Always returns a (possibly partial) `File` plus every
+  diagnostic that fired. Top-level statement errors trigger a sync
+  to the next likely statement start; block-internal errors fail
+  the enclosing top-level statement. Lexer errors remain fatal
+  (single diagnostic, empty file). Useful for editor / LSP workflows
+  that want to show every problem in one pass instead of fail-fast.
 - `StringLit::try_into_bare_text(span, context)` — decodes a string
   literal as a single-line, non-interpolated bare-name payload.
   Used at three sites (lexer ref-segment, parser ref-segment, parser
