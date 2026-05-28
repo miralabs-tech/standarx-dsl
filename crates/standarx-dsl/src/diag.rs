@@ -33,14 +33,19 @@ impl<T> Spanned<T> {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<T: serde::Serialize> serde::Serialize for Spanned<T> {
     fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         self.node.serialize(ser)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "snake_case")
+)]
 #[non_exhaustive]
 pub enum Severity {
     Error,

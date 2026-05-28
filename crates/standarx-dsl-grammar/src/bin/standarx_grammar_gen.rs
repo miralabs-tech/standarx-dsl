@@ -1,9 +1,11 @@
 //! `standarx-grammar-gen` — write the editor grammar files to disk.
 //!
 //! Usage:
-//!   standarx-grammar-gen --out-dir <DIR>      # default: ./dist
-//!   standarx-grammar-gen --stdout textmate    # print to stdout
-//!   standarx-grammar-gen --stdout config
+//! ```text
+//! standarx-grammar-gen --out-dir <DIR>      # default: ./dist
+//! standarx-grammar-gen --stdout textmate    # print to stdout
+//! standarx-grammar-gen --stdout config
+//! ```
 
 use std::path::PathBuf;
 use std::process::ExitCode;

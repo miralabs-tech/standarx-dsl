@@ -23,6 +23,25 @@ escape hatches stay open by design: `Ident(pub String)` (consumers
 build idents in tests) and `Spanned<T>` (generic wrapper, shape can't
 grow without changing the generic itself).
 
+**Locked-in design choices for v1.0.** Three behaviors are now part
+of the contract; changing any of them in a 1.x is forbidden, and
+each can have a *new* API added next to it without breaking:
+
+- `parse()` returns `Result<File, Diag>` — a single diagnostic on
+  failure, fail-fast (no error recovery). If multi-error reporting
+  is needed later, it ships as a new function (e.g.
+  `parse_with_recovery() -> (File, Vec<Diag>)`) rather than
+  changing the existing signature.
+- `Spanned<T>: Serialize` delegates to `T` — the span is dropped
+  during JSON / msgpack / etc. encoding. Tooling that needs spans
+  works with the `Spanned` struct directly or implements its own
+  serializer. Changing this would silently churn every downstream
+  AST dump.
+- `serde::Serialize` derives on AST/Diag types ship under the
+  default `serde` feature (on by default). Consumers can opt out
+  with `default-features = false` for a leaner build. Adding a
+  `Deserialize` derive later goes behind the same feature.
+
 ### Added
 
 - `impl std::fmt::Display for Diag` — `format!("{diag}")` now reads

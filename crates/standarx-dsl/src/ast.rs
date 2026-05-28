@@ -1,14 +1,17 @@
 use crate::diag::{Diag, Span, Spanned};
+#[cfg(feature = "serde")]
 use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct File {
     pub stmts: Vec<StmtNode>,
     pub trailing_trivia: Vec<Trivia>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct StmtNode {
     pub leading: Vec<Trivia>,
@@ -17,8 +20,12 @@ pub struct StmtNode {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(tag = "kind", content = "text", rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize),
+    serde(tag = "kind", content = "text", rename_all = "snake_case")
+)]
 #[non_exhaustive]
 pub enum TriviaKind {
     LineComment(String),
@@ -26,28 +33,32 @@ pub enum TriviaKind {
     BlankLine,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct Trivia {
     pub kind: TriviaKind,
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub enum Stmt {
     Assign(Assign),
     Block(Block),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct Assign {
     pub key: Spanned<Ident>,
     pub value: Spanned<Expr>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct Block {
     pub kind: Spanned<Ident>,
@@ -56,8 +67,8 @@ pub struct Block {
     pub trailing_trivia: Vec<Trivia>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-#[serde(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize), serde(transparent))]
 pub struct Ident(pub String);
 
 impl Ident {
@@ -66,7 +77,8 @@ impl Ident {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub enum Expr {
     Int(i64),
@@ -79,20 +91,23 @@ pub enum Expr {
     Map(Vec<MapEntry>),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct Ref {
     pub path: Vec<Spanned<Ident>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct MapEntry {
     pub key: Spanned<Ident>,
     pub value: Spanned<Expr>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct StringLit {
     pub parts: Vec<StringPart>,
@@ -141,7 +156,8 @@ impl StringLit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub enum StringPart {
     Lit(String),
@@ -162,7 +178,8 @@ pub enum StringPart {
 ///
 /// Keep this enum in sync with [`Expr`] when adding scalar variants;
 /// do **not** unify the two without explicit design discussion.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub enum InterpExpr {
     Ref(Ref),
