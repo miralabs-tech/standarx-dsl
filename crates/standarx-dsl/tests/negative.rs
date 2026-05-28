@@ -46,7 +46,12 @@ fn expect_msg(label: &str, src: &str, msg_substring: &str) {
 
 #[test]
 fn rejects_c_style_comments() {
-    expect_err("// line", "// hi\n", "'//' comments are not supported", 0..2);
+    expect_err(
+        "// line",
+        "// hi\n",
+        "'//' comments are not supported",
+        0..2,
+    );
     expect_err(
         "/* block */",
         "/* hi */",
@@ -84,7 +89,11 @@ fn rejects_string_errors() {
         "triple-quote multi-line strings are not supported",
         2..5,
     );
-    expect_msg("unterminated string", "k \"hi", "unterminated string literal");
+    expect_msg(
+        "unterminated string",
+        "k \"hi",
+        "unterminated string literal",
+    );
     expect_msg(
         "newline in basic string",
         "k \"hi\nbye\"",
@@ -96,7 +105,11 @@ fn rejects_string_errors() {
 
 #[test]
 fn rejects_unicode_escape_errors() {
-    expect_msg("missing brace after \\u", r#"k "\u41""#, "expected '{' after \\u");
+    expect_msg(
+        "missing brace after \\u",
+        r#"k "\u41""#,
+        "expected '{' after \\u",
+    );
     expect_msg(
         "invalid hex in \\u{}",
         r#"k "\u{zzz}""#,
@@ -116,7 +129,11 @@ fn rejects_unicode_escape_errors() {
 
 #[test]
 fn rejects_template_errors() {
-    expect_msg("unterminated inline template", "k `hi", "unterminated template literal");
+    expect_msg(
+        "unterminated inline template",
+        "k `hi",
+        "unterminated template literal",
+    );
     expect_msg(
         "newline in inline template",
         "k `hi\nbye`",
@@ -127,12 +144,12 @@ fn rejects_template_errors() {
         "k ```hi",
         "unterminated multi-line template",
     );
-    expect_msg("dangling backslash in template", "k `hi\\", "dangling backslash");
     expect_msg(
-        "unknown escape in template",
-        "k `\\q`",
-        "unknown escape",
+        "dangling backslash in template",
+        "k `hi\\",
+        "dangling backslash",
     );
+    expect_msg("unknown escape in template", "k `\\q`", "unknown escape");
 }
 
 #[test]
@@ -177,37 +194,21 @@ fn rejects_parser_top_level_errors() {
         "k",
         "expected value or '{' after identifier",
     );
-    expect_msg(
-        "unterminated block",
-        "g { k 1",
-        "unterminated block body",
-    );
+    expect_msg("unterminated block", "g { k 1", "unterminated block body");
 }
 
 #[test]
 fn rejects_parser_expr_errors() {
-    expect_msg(
-        "bare comma as value",
-        "k ,",
-        "expected expression",
-    );
+    expect_msg("bare comma as value", "k ,", "expected expression");
     expect_msg(
         "dangling dot in ref path",
         "k foo.",
         "expected identifier or quoted segment after '.'",
     );
-    expect_msg(
-        "unterminated list",
-        "k [ 1 2",
-        "unterminated list",
-    );
+    expect_msg("unterminated list", "k [ 1 2", "unterminated list");
     // Map literal at expression position (inside a list) — the
     // top-level `k { ... }` form is parsed as a block, not a map.
-    expect_msg(
-        "unterminated map",
-        "k [{ a 1",
-        "unterminated map",
-    );
+    expect_msg("unterminated map", "k [{ a 1", "unterminated map");
 }
 
 #[test]
