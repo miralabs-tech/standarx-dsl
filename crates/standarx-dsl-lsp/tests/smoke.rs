@@ -7,7 +7,10 @@
 
 use standarx_dsl::{Diag, File};
 use standarx_dsl_lsp::{collect_diagnostics, conversion, diag_to_lsp, Schema, DIAGNOSTIC_SOURCE};
-use tower_lsp::lsp_types::{DiagnosticSeverity, Position};
+use tower_lsp::lsp_types::{
+    CompletionItem, DiagnosticSeverity, Hover, HoverContents, Location, MarkupContent, MarkupKind,
+    Position, Range, Url,
+};
 
 #[test]
 fn byte_offset_at_start_is_origin() {
@@ -161,4 +164,128 @@ fn collect_diagnostics_skips_schemas_on_parse_failure() {
     let out = collect_diagnostics("{ broken }", &schemas);
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].severity, Some(DiagnosticSeverity::ERROR));
+}
+
+#[test]
+fn position_round_trip_single_line() {
+    let src = "abc";
+    for byte in 0..=src.len() {
+        let pos = conversion::byte_offset_to_position(src, byte);
+        let back = conversion::position_to_byte_offset(src, pos);
+        assert_eq!(back, byte, "round-trip failed at byte {byte}");
+    }
+}
+
+#[test]
+fn position_round_trip_multi_line() {
+    let src = "abc\ndef\nghi";
+    for byte in 0..=src.len() {
+        let pos = conversion::byte_offset_to_position(src, byte);
+        let back = conversion::position_to_byte_offset(src, pos);
+        assert_eq!(back, byte, "round-trip failed at byte {byte}");
+    }
+}
+
+#[test]
+fn position_round_trip_multibyte_chars() {
+    // café 🦀 — Latin-1 supplement + supplementary-plane emoji.
+    let src = "café 🦀";
+    for byte in 0..=src.len() {
+        if !src.is_char_boundary(byte) {
+            continue;
+        }
+        let pos = conversion::byte_offset_to_position(src, byte);
+        let back = conversion::position_to_byte_offset(src, pos);
+        assert_eq!(back, byte, "round-trip failed at byte {byte}");
+    }
+}
+
+#[test]
+fn position_to_byte_offset_clamps_past_end() {
+    let src = "abc";
+    let past = Position {
+        line: 999,
+        character: 999,
+    };
+    assert_eq!(conversion::position_to_byte_offset(src, past), src.len());
+}
+
+struct ToySchema;
+
+impl Schema for ToySchema {
+    fn validate(&self, _file: &File, _src: &str) -> Vec<Diag> {
+        Vec::new()
+    }
+
+    fn completion(&self, _file: &File, _src: &str, _offset: usize) -> Vec<CompletionItem> {
+        vec![
+            CompletionItem::new_simple("project".into(), "block kind".into()),
+            CompletionItem::new_simple("task".into(), "block kind".into()),
+        ]
+    }
+
+    fn hover(&self, _file: &File, _src: &str, _offset: usize) -> Option<Hover> {
+        Some(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: "**toy**".into(),
+            }),
+            range: None,
+        })
+    }
+
+    fn goto_definition(&self, _file: &File, _src: &str, _offset: usize) -> Option<Location> {
+        Some(Location {
+            uri: Url::parse("file:///stub.sxb").unwrap(),
+            range: Range {
+                start: Position {
+                    line: 0,
+                    character: 0,
+                },
+                end: Position {
+                    line: 0,
+                    character: 0,
+                },
+            },
+        })
+    }
+}
+
+#[test]
+fn schema_completion_default_impl_returns_empty() {
+    // CountStmtsSchema only implements `validate`; completion etc.
+    // come from the default impls.
+    let schema = CountStmtsSchema;
+    let file = standarx_dsl::parse("k 1").expect("parse");
+    assert!(schema.completion(&file, "k 1", 0).is_empty());
+    assert!(schema.hover(&file, "k 1", 0).is_none());
+    assert!(schema.goto_definition(&file, "k 1", 0).is_none());
+}
+
+#[test]
+fn schema_completion_returns_items_when_overridden() {
+    let schema = ToySchema;
+    let file = standarx_dsl::parse("k 1").expect("parse");
+    let items = schema.completion(&file, "k 1", 0);
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].label, "project");
+}
+
+#[test]
+fn schema_hover_returns_some_when_overridden() {
+    let schema = ToySchema;
+    let file = standarx_dsl::parse("k 1").expect("parse");
+    let h = schema.hover(&file, "k 1", 0).expect("hover");
+    let HoverContents::Markup(m) = h.contents else {
+        panic!("expected markup hover");
+    };
+    assert_eq!(m.value, "**toy**");
+}
+
+#[test]
+fn schema_goto_definition_returns_some_when_overridden() {
+    let schema = ToySchema;
+    let file = standarx_dsl::parse("k 1").expect("parse");
+    let loc = schema.goto_definition(&file, "k 1", 0).expect("goto");
+    assert_eq!(loc.uri.scheme(), "file");
 }
