@@ -23,7 +23,15 @@
 
 pub mod ast;
 pub mod diag;
+
+// `lexer` and `parser` are kept `pub` so adventurous consumers (formatters,
+// linters, alternative drivers) can still reach the token stream and the
+// parser entry point. They are NOT part of the semver public contract —
+// the supported API surface is `parse()` + `ast::*` + `diag::*`. Anything
+// else may break between minor versions until the modules stabilise.
+#[doc(hidden)]
 pub mod lexer;
+#[doc(hidden)]
 pub mod parser;
 
 pub use ast::{File, Stmt};

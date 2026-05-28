@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  test:
+    name: test (stable)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features
+
+  msrv:
+    name: build (MSRV 1.95)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --workspace --all-features
+
+  grammar-drift:
+    name: grammar dist up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Regenerate dist/
+        run: |
+          cargo run -p standarx-dsl-grammar --bin standarx-grammar-gen -- \
+            --out-dir crates/standarx-dsl-grammar/dist
+      - name: Assert no drift vs versioned dist
+        run: |
+          if ! git diff --quiet -- crates/standarx-dsl-grammar/dist; then
+            echo "::error::crates/standarx-dsl-grammar/dist is out of date."
+            echo "Run 'cargo run -p standarx-dsl-grammar --bin standarx-grammar-gen -- --out-dir crates/standarx-dsl-grammar/dist' and commit the result."
+            git --no-pager diff -- crates/standarx-dsl-grammar/dist
+            exit 1
+          fi
